@@ -52,7 +52,7 @@ public class RestConfig {
         restTemplate.setRequestFactory(factory);
 
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
-        messageConverters.add( new StringHttpMessageConverter() );
+        messageConverters.add( new FormHttpMessageConverter() );
 
         restTemplate.setMessageConverters(messageConverters);
 
