@@ -2,8 +2,8 @@
 <infinispan xmlns="urn:infinispan:config:7.2">
 
 	<cache-container default-cache="default">
-		<local-cache name="expressions" statistics="true">
-			<eviction max-entries="100"/>
+		<local-cache name="${expressions.cache.name}" statistics="true">
+			<eviction max-entries="1000"/>
 			<expiration lifespan="3600000"/>
 		</local-cache>
 	</cache-container>
