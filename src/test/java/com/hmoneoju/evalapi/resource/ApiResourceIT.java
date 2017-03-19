@@ -15,6 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+
+import java.io.StringWriter;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static io.restassured.RestAssured.*;
 
@@ -24,34 +29,55 @@ import static org.junit.Assert.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class ApiResourceIT {
 
+    private static final String EXPRESSION = "2+2";
+    private static final String RESULT = "4.0";
+    private static final String EVALME_URL = "/eval";
+    private static final String API_URL = "/api";
+    private static final String EXPRESSION_PARAM_NAME = "expression";
+
     @Rule
     public WireMockRule evalMeServer = new WireMockRule(8090);
 
     @Test
     public void successJSONResponse() {
         Gson gson = new GsonBuilder().create();
-        Operation operation = new Operation("2+2", "4.0");
-        String resultJson = gson.toJson(operation);
+        Operation operation = new Operation(EXPRESSION, RESULT);
+        String expectedJSON = gson.toJson(operation);
 
-        stubFor(post(urlEqualTo("/eval"))
-            .withHeader(HttpHeaders.ACCEPT, equalTo(MediaType.APPLICATION_JSON.toString()))
+        assertSuccess(expectedJSON, MediaType.APPLICATION_JSON, ContentType.JSON);
+    }
+
+    @Test
+    public void successXMLResponse() throws JAXBException {
+        Operation operation = new Operation(EXPRESSION, RESULT);
+        JAXBContext jaxbContext = JAXBContext.newInstance(Operation.class);
+        StringWriter writer = new StringWriter();
+        jaxbContext.createMarshaller().marshal(operation, writer);
+        String expectedXML = writer.toString();
+
+        assertSuccess(expectedXML, MediaType.APPLICATION_XML, ContentType.XML);
+    }
+
+    private void assertSuccess(String expectedResult, MediaType mediaType, ContentType contentType) {
+        stubFor(post(urlEqualTo(EVALME_URL))
+            .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
             .willReturn(aResponse()
                 .withStatus(HttpStatus.OK.value())
-                .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString())
-                .withBody(resultJson)));
+                .withHeader(HttpHeaders.CONTENT_TYPE, mediaType.toString())
+                .withBody(expectedResult)));
 
         Response response =
             given()
-                .formParam("expression","2+2")
-                .accept(MediaType.APPLICATION_JSON.toString())
+                .formParam(EXPRESSION_PARAM_NAME,EXPRESSION)
+                .accept(mediaType.toString())
             .when()
-                .post("/api")
+                .post(API_URL)
             .then()
-                .contentType(ContentType.JSON)
+                .contentType(contentType)
                 .statusCode(HttpStatus.OK.value())
             .extract().response();
 
-        assertEquals( resultJson, response.getBody().print());
+        assertEquals( expectedResult, response.getBody().print());
     }
 
 }

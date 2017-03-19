@@ -13,6 +13,7 @@ import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -42,20 +43,13 @@ public class RestConfig {
     }
 
     @Bean
-    @Autowired
-    public RestTemplate restTemplate(HttpClient httpClient) {
+    public RestTemplate restTemplate(@Autowired HttpClient httpClient) {
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setHttpClient(httpClient);
 
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setRequestFactory(factory);
-
-        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>(1);
-        messageConverters.add( new MappingJackson2HttpMessageConverter()) ;
-        restTemplate.setMessageConverters(messageConverters);
-
-        restTemplate.setMessageConverters(messageConverters);
 
         return restTemplate;
     }
