@@ -1,6 +1,6 @@
 package com.hmoneoju.evalapi.service;
 
-import org.apache.catalina.servlet4preview.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 
@@ -13,5 +13,5 @@ public interface RetryableServiceOperation<T> {
             include = {SocketException.class, SocketTimeoutException.class} ,
             maxAttemptsExpression="#{${retry.max.attempts}}",
             backoff = @Backoff(delayExpression = "#{${retry.delay}}"))
-    T execute(HttpServletRequest request);
+    T execute(String expression, HttpHeaders httpHeaders);
 }

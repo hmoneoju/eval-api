@@ -51,8 +51,9 @@ public class RestConfig {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setRequestFactory(factory);
 
-        List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
-        messageConverters.add( new FormHttpMessageConverter() );
+        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>(1);
+        messageConverters.add( new MappingJackson2HttpMessageConverter()) ;
+        restTemplate.setMessageConverters(messageConverters);
 
         restTemplate.setMessageConverters(messageConverters);
 
