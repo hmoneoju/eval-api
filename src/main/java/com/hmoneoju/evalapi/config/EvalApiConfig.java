@@ -7,7 +7,6 @@ import org.springframework.retry.annotation.EnableRetry;
 
 @Configuration
 @EnableCaching
-@EnableRetry
 @Import({RestConfig.class})
 public class EvalApiConfig {
 }

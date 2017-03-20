@@ -1,4 +1,4 @@
-package com.hmoneoju.evalapi.request;
+package com.hmoneoju.evalapi.http;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Component
-public class HeadersExtractor {
+public class HttpHeadersExtractor {
 
     private  static final String HEADERS_SEPARATOR = ",";
 
@@ -18,7 +18,7 @@ public class HeadersExtractor {
     private List<String> headersToForward;
 
     @PostConstruct
-    public void init() {
+    private void init() {
         headersToForward = Arrays.asList(headerNamesToForward.split(HEADERS_SEPARATOR));
         headersToForward.forEach(String::toLowerCase);
     }

@@ -4,6 +4,7 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hmoneoju.evalapi.model.Operation;
+import com.hmoneoju.evalapi.model.OperationError;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.Rule;
@@ -35,6 +36,10 @@ public class ApiResourceIT {
     private static final String API_URL = "/api";
     private static final String EXPRESSION_PARAM_NAME = "expression";
 
+    private static final int ERROR_CODE = 1001;
+    private static final String INVALID_EXPRESSION = "2+2)";
+    private static final String INVALID_EXPRESSION_MESSAGE = "[%s] is not a valid expression";
+
     @Rule
     public WireMockRule evalMeServer = new WireMockRule(8090);
 
@@ -58,6 +63,31 @@ public class ApiResourceIT {
         assertSuccess(expectedXML, MediaType.APPLICATION_XML, ContentType.XML);
     }
 
+    @Test
+    public void invalidExpressionJSONResponse() {
+        OperationError operationError = new OperationError();
+        operationError.setErrorCode(ERROR_CODE);
+        operationError.setMessage(String.format(INVALID_EXPRESSION_MESSAGE, INVALID_EXPRESSION));
+
+        Gson gson = new GsonBuilder().create();
+        String expectedJSON = gson.toJson(operationError);
+
+        assertInvalidExpression(expectedJSON, MediaType.APPLICATION_JSON, ContentType.JSON);
+    }
+
+    @Test
+    public void invalidExpressionXMLResponse() throws JAXBException {
+        OperationError operationError = new OperationError();
+        operationError.setErrorCode(ERROR_CODE);
+        operationError.setMessage(String.format(INVALID_EXPRESSION_MESSAGE, INVALID_EXPRESSION));
+        JAXBContext jaxbContext = JAXBContext.newInstance(OperationError.class);
+        StringWriter writer = new StringWriter();
+        jaxbContext.createMarshaller().marshal(operationError, writer);
+        String expectedXML = writer.toString();
+
+        assertInvalidExpression(expectedXML, MediaType.APPLICATION_XML, ContentType.XML);
+    }
+
     private void assertSuccess(String expectedResult, MediaType mediaType, ContentType contentType) {
         stubFor(post(urlEqualTo(EVALME_URL))
             .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
@@ -76,6 +106,28 @@ public class ApiResourceIT {
                 .contentType(contentType)
                 .statusCode(HttpStatus.OK.value())
             .extract().response();
+
+        assertEquals( expectedResult, response.getBody().print());
+    }
+
+    private void assertInvalidExpression(String expectedResult, MediaType mediaType, ContentType contentType) {
+        stubFor(post(urlEqualTo(EVALME_URL))
+                .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
+                .willReturn(aResponse()
+                        .withStatus(HttpStatus.BAD_REQUEST.value())
+                        .withHeader(HttpHeaders.CONTENT_TYPE, mediaType.toString())
+                        .withBody(expectedResult)));
+
+        Response response =
+                given()
+                    .formParam(EXPRESSION_PARAM_NAME,EXPRESSION)
+                    .accept(mediaType.toString())
+                .when()
+                    .post(API_URL)
+                .then()
+                    .contentType(contentType)
+                    .statusCode(HttpStatus.BAD_REQUEST.value())
+                .extract().response();
 
         assertEquals( expectedResult, response.getBody().print());
     }

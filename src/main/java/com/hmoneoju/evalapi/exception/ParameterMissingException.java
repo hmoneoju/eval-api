@@ -1,13 +1,14 @@
 package com.hmoneoju.evalapi.exception;
 
+public class ParameterMissingException extends EvalApiException {
 
-import java.text.MessageFormat;
+    public static final int ERROR_CODE = 101;
 
-public class ParameterMissingException extends RuntimeException {
+    public ParameterMissingException(String message) {
+        super(message);
+    }
 
-    private String paramater;
-
-    public ParameterMissingException(String paramater) {
-        super(MessageFormat.format("Mandator parameter %s missing", paramater));
+    public ParameterMissingException(String message, Throwable e) {
+        super(message, e);
     }
 }
