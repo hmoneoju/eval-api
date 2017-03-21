@@ -17,7 +17,7 @@ import java.util.List;
 @Component
 public class RetryableEvaluatorService {
 
-    private Logger logger = LoggerFactory.getLogger(RetryableEvaluatorService.class);
+    private static final Logger logger = LoggerFactory.getLogger(RetryableEvaluatorService.class);
     private static final String SEPARATOR = ",";
 
     @Autowired
