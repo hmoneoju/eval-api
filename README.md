@@ -25,7 +25,7 @@ Some responsibilities of the Gateway:
 
 * Forward to the backend the HttpHeaders configured (*request.headers.to.forward*)
 * Cache results coming from the math service and serve from the cache directly if there is a hit, in order to reduce the load and round trips to the backend
-* Recover from I/O (Connection errors, timeours...), being able to configure multiple math services *evalme.service.urls*, and per service the max
+* Recover from I/O (Connection errors, timeouts...), being able to configure multiple math services *evalme.service.urls*, and per service the max
 number of retries in case of an IO failure *retry.max.attempts*
 * Forward back to the client business errors coming from the backend maintaining the original HTTP status code and error message
 * XML and JSON support, if the client does not explicitly send the accept HTTP header JSON will be used as default
