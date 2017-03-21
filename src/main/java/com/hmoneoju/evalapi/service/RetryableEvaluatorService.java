@@ -36,7 +36,7 @@ public class RetryableEvaluatorService {
     public Operation evaluate(String expression, HttpHeaders headers)  {
         for ( String url: urls ) {
             try {
-                return evaluateInternal(expression, headers, mathEvaluatorService, url, 1);
+                return evaluateInternal(expression, headers, url, 1);
             } catch (RemoteConnectException e ) {
                 logger.warn(e.getMessage());
             }
@@ -46,7 +46,6 @@ public class RetryableEvaluatorService {
     }
 
     private Operation evaluateInternal(String expression, HttpHeaders headers,
-                                       MathEvaluatorService evaluatorService,
                                        String url, int retryAttempt) {
 
         if ( retryAttempt > properties.getMaxAttempts() )
@@ -54,10 +53,10 @@ public class RetryableEvaluatorService {
 
         try {
             logger.info("Attempt {} for url {}", retryAttempt, url );
-            return evaluatorService.evaluate(expression, headers, url);
+            return mathEvaluatorService.evaluate(expression, headers, url);
         } catch (ResourceAccessException e) {
             logger.warn("Attempt failed", e);
-            return evaluateInternal(expression, headers, evaluatorService, url, ++retryAttempt);
+            return evaluateInternal(expression, headers, url, ++retryAttempt);
         }
     }
 }
