@@ -35,6 +35,6 @@ number of retries in case of an IO failure *retry.max.attempts*
 To manually test the service you can use curl command, see an example below:
 
 ```
-curl -F "expression=(25*25+12)" -H "Accept: application/json" -X POST http://localhost:8080/api/eval
+curl -F "expression=(25*25)+12" -H "Accept: application/json" -X POST http://localhost:8080/api/eval
 {"expression":"(25*25)+12","result":"637.0"}
 ```
