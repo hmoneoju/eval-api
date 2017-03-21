@@ -9,7 +9,7 @@ You need to have maven 3.x as well as java 8 in order to build and run the servi
 
 ## Running the service
 
-The artifact produced by is an executable jar with an embedded tomcat. To run the service you will need to run:
+The artifact produced by is an executable jar with an embedded tomcat. To run the service you will need to execute:
 
 *hector@Iscariot ~/projects/personal/eval-api $ java -jar ./target/eval-api-1.0.jar &*
 
@@ -25,7 +25,7 @@ Some responsibilities of the Gateway:
 
 * Forward to the backend the HttpHeaders configured (*request.headers.to.forward*)
 * Cache results coming from the math service and serve from the cache directly if there is a hit, in order to reduce the load and round trips to the backend
-* Recover from IO (Connection errors, timeours...), being able to configure multiple math services *evalme.service.urls*, and per service the max
+* Recover from I/O (Connection errors, timeours...), being able to configure multiple math services *evalme.service.urls*, and per service the max
 number of retries in case of an IO failure *retry.max.attempts*
 * Forward back to the client business errors coming from the backend maintaining the original HTTP status code and error message
 * XML and JSON support, if the client does not explicitly send the accept HTTP header JSON will be used as default
