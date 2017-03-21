@@ -2,7 +2,7 @@ package com.hmoneoju.evalapi.service;
 
 import com.hmoneoju.evalapi.exception.ParameterMissingException;
 import com.hmoneoju.evalapi.exception.RemoteOperationException;
-import com.hmoneoju.evalapi.http.HttpClientErrorResponse;
+import com.hmoneoju.evalapi.http.HttpStatusCodeErrorResponse;
 import com.hmoneoju.evalapi.model.Operation;
 import com.hmoneoju.evalapi.model.OperationError;
 import com.hmoneoju.evalapi.http.HttpHeadersExtractor;
@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpMessageConverterExtractor;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -29,13 +29,13 @@ import java.util.Arrays;
 
 import static com.hmoneoju.evalapi.exception.RemoteOperationException.GENERIC_REMOTE_ERROR;
 
-@Component
-public class EvalOperation {
+@Component("eval")
+public class EvalmeService implements MathEvaluatorService {
 
-    private static final Logger logger = LoggerFactory.getLogger(EvalOperation.class);
+    private static final Logger logger = LoggerFactory.getLogger(EvalmeService.class);
 
     @Autowired
-    private ServiceConfiguration serviceConfiguration;
+    private ServiceProperties properties;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -46,42 +46,46 @@ public class EvalOperation {
     @Autowired
     private CacheManager cacheManager;
 
-    public Operation execute(String expression, HttpHeaders headers) {
+    @Override
+    public Operation evaluate(String expression, HttpHeaders headers, String url) {
         if (StringUtils.isEmpty(expression) )
-            throw new ParameterMissingException( serviceConfiguration.getExpressionParameterName() );
+            throw new ParameterMissingException("Mandatory parameter [" + properties.getExpressionParamName() + "] missing");
 
-        Cache cache = cacheManager.getCache( serviceConfiguration.getCacheName() );
+        Cache cache = cacheManager.getCache(properties.getCacheName());
         Cache.ValueWrapper cachedExpression = cache.get(expression);
         Operation operation;
         if ( cachedExpression != null ) {
-            operation = new Operation(expression, cachedExpression.get().toString());
+            String result = cachedExpression.get().toString();
+            operation = new Operation(expression, result);
+            logger.info("Retrieving ["+expression+"="+result+"] from cache");
         } else {
-            operation = callExternalService(expression, headers);
+            operation = callExternalService(expression, headers,url);
             cache.put(operation.getExpression(), operation.getResult() );
+            logger.info("Writing ["+expression+"="+operation.getResult()+"] into cache");
         }
         return operation;
     }
 
-    private Operation callExternalService(String expression, HttpHeaders sourceHeaders) {
+    private Operation callExternalService(String expression, HttpHeaders sourceHeaders, String url) {
         HttpHeaders headers = httpHeadersExtractor.extract(sourceHeaders);
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>(1);
-        params.put(serviceConfiguration.getExpressionParameterName(), Arrays.asList(expression));
-        UriComponentsBuilder uriBuilder  = UriComponentsBuilder.fromHttpUrl(serviceConfiguration.getServiceUrl() );
+        params.put(properties.getExpressionParamName(), Arrays.asList(expression));
 
+        UriComponentsBuilder uriBuilder  = UriComponentsBuilder.fromHttpUrl(url);
         HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity(params, headers);
 
         ResponseEntity responseEntity;
         try {
             responseEntity = restTemplate.postForEntity(uriBuilder.toUriString(), requestEntity, Operation.class);
-        } catch (HttpClientErrorException e) {
+            return (Operation) responseEntity.getBody();
+        } catch (HttpStatusCodeException e) {
             logger.error("Error caught calling external service", e);
-            return handleHttpClientException(e);
+            RemoteOperationException ex = prepareRemoteError(e);
+            throw ex;
         }
-
-        return (Operation) responseEntity.getBody();
     }
 
-    private Operation handleHttpClientException(HttpClientErrorException clientError) {
+    private RemoteOperationException prepareRemoteError(HttpStatusCodeException clientError) {
         if ( StringUtils.isEmpty( clientError.getResponseBodyAsString()) )
             throw new RemoteOperationException(GENERIC_REMOTE_ERROR, clientError.getRawStatusCode());
 
@@ -90,7 +94,7 @@ public class EvalOperation {
                 restTemplate.getMessageConverters()
         );
 
-        ClientHttpResponse clientResponse = new HttpClientErrorResponse(clientError);
+        ClientHttpResponse clientResponse = new HttpStatusCodeErrorResponse(clientError);
         RemoteOperationException remoteOperationException;
         try {
             OperationError operationError = (OperationError) responseExtractor.extractData(clientResponse);

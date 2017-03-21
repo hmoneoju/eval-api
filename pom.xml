@@ -5,11 +5,11 @@
 
 	<groupId>com.hmoneoju.evalapi</groupId>
 	<artifactId>eval-api</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0</version>
 	<packaging>jar</packaging>
 
-	<name>toran</name>
-	<description>A simple API Gateway to eval-me service</description>
+	<name>eval-api</name>
+	<description>An API Gateway to eval-me service</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>

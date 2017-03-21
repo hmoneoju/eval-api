@@ -28,7 +28,7 @@ import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
-public class ApiResourceIT {
+public class ApiResourceTest {
 
     private static final String EXPRESSION = "2+2";
     private static final String RESULT = "4.0";
@@ -36,9 +36,13 @@ public class ApiResourceIT {
     private static final String API_URL = "/api";
     private static final String EXPRESSION_PARAM_NAME = "expression";
 
-    private static final int ERROR_CODE = 1001;
+    private static final int INVALID_EXPRESSION_ERROR_CODE = 1001;
     private static final String INVALID_EXPRESSION = "2+2)";
     private static final String INVALID_EXPRESSION_MESSAGE = "[%s] is not a valid expression";
+    private static final String NO_EXPRESSION_VALUE = "";
+    private static final int PARAMETER_MISSING_ERROR_CODE =101;
+    private static final int REMOTE_CONNECT_ERROR_CODE =102;
+    public static final int FIXED_DELAY = 1500;
 
     @Rule
     public WireMockRule evalMeServer = new WireMockRule(8090);
@@ -66,26 +70,56 @@ public class ApiResourceIT {
     @Test
     public void invalidExpressionJSONResponse() {
         OperationError operationError = new OperationError();
-        operationError.setErrorCode(ERROR_CODE);
+        operationError.setErrorCode(INVALID_EXPRESSION_ERROR_CODE);
         operationError.setMessage(String.format(INVALID_EXPRESSION_MESSAGE, INVALID_EXPRESSION));
 
         Gson gson = new GsonBuilder().create();
         String expectedJSON = gson.toJson(operationError);
 
-        assertInvalidExpression(expectedJSON, MediaType.APPLICATION_JSON, ContentType.JSON);
+        assertInvalidExpressionResponse(expectedJSON, MediaType.APPLICATION_JSON, ContentType.JSON, HttpStatus.BAD_REQUEST.value());
     }
 
     @Test
     public void invalidExpressionXMLResponse() throws JAXBException {
         OperationError operationError = new OperationError();
-        operationError.setErrorCode(ERROR_CODE);
+        operationError.setErrorCode(INVALID_EXPRESSION_ERROR_CODE);
         operationError.setMessage(String.format(INVALID_EXPRESSION_MESSAGE, INVALID_EXPRESSION));
         JAXBContext jaxbContext = JAXBContext.newInstance(OperationError.class);
         StringWriter writer = new StringWriter();
         jaxbContext.createMarshaller().marshal(operationError, writer);
         String expectedXML = writer.toString();
 
-        assertInvalidExpression(expectedXML, MediaType.APPLICATION_XML, ContentType.XML);
+        assertInvalidExpressionResponse(expectedXML, MediaType.APPLICATION_XML, ContentType.XML, HttpStatus.BAD_REQUEST.value());
+    }
+
+    @Test
+    public void expressionMissingJSONResponse() {
+        expressionMissing(
+                PARAMETER_MISSING_ERROR_CODE,
+                MediaType.APPLICATION_JSON,
+                ContentType.JSON,
+                HttpStatus.BAD_REQUEST.value()
+        );
+    }
+
+    @Test
+    public void expressionMissingXMLResponse() {
+        expressionMissing(
+                PARAMETER_MISSING_ERROR_CODE,
+                MediaType.APPLICATION_XML,
+                ContentType.XML,
+                HttpStatus.BAD_REQUEST.value()
+        );
+    }
+
+    @Test
+    public void remoteConnectErrorJSONResponse(){
+        assertTimeoutError(
+                REMOTE_CONNECT_ERROR_CODE,
+                MediaType.APPLICATION_JSON,
+                ContentType.JSON,
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
     }
 
     private void assertSuccess(String expectedResult, MediaType mediaType, ContentType contentType) {
@@ -110,26 +144,62 @@ public class ApiResourceIT {
         assertEquals( expectedResult, response.getBody().print());
     }
 
-    private void assertInvalidExpression(String expectedResult, MediaType mediaType, ContentType contentType) {
+    private void assertInvalidExpressionResponse(String expectedResult, MediaType mediaType, ContentType contentType, int httpStatusCode) {
         stubFor(post(urlEqualTo(EVALME_URL))
-                .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
-                .willReturn(aResponse()
-                        .withStatus(HttpStatus.BAD_REQUEST.value())
-                        .withHeader(HttpHeaders.CONTENT_TYPE, mediaType.toString())
-                        .withBody(expectedResult)));
+            .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
+            .willReturn(aResponse()
+                    .withStatus(httpStatusCode)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, mediaType.toString())
+                    .withBody(expectedResult)));
 
         Response response =
-                given()
-                    .formParam(EXPRESSION_PARAM_NAME,EXPRESSION)
-                    .accept(mediaType.toString())
-                .when()
-                    .post(API_URL)
-                .then()
-                    .contentType(contentType)
-                    .statusCode(HttpStatus.BAD_REQUEST.value())
-                .extract().response();
+            given()
+                .formParam(EXPRESSION_PARAM_NAME,INVALID_EXPRESSION)
+                .accept(mediaType.toString())
+            .when()
+                .post(API_URL)
+            .then()
+                .contentType(contentType)
+                .statusCode(httpStatusCode)
+            .extract().response();
 
-        assertEquals( expectedResult, response.getBody().print());
+        assertTrue(response.getBody().print().contains(expectedResult));
+    }
+
+    private void expressionMissing(int errorCode, MediaType mediaType, ContentType contentType, int httpStatusCode) {
+        Response response =
+            given()
+                .formParam(EXPRESSION_PARAM_NAME, NO_EXPRESSION_VALUE)
+                .accept(mediaType.toString())
+            .when()
+                .post(API_URL)
+            .then()
+                .contentType(contentType)
+                .statusCode(httpStatusCode)
+            .extract().response();
+
+        assertTrue(response.getBody().print().contains(String.valueOf(errorCode)));
+    }
+
+    private void assertTimeoutError(int errorCode, MediaType mediaType, ContentType contentType, int httpStatusCode) {
+        stubFor(post(urlEqualTo(EVALME_URL))
+            .withHeader(HttpHeaders.ACCEPT, equalTo(mediaType.toString()))
+            .willReturn(aResponse()
+                .withFixedDelay(FIXED_DELAY))
+        );
+
+        Response response =
+            given()
+                .formParam(EXPRESSION_PARAM_NAME,EXPRESSION)
+                .accept(mediaType.toString())
+            .when()
+                .post(API_URL)
+            .then()
+                .contentType(contentType)
+                .statusCode(httpStatusCode)
+            .extract().response();
+
+        assertTrue(response.getBody().print().contains(String.valueOf(errorCode)));
     }
 
 }

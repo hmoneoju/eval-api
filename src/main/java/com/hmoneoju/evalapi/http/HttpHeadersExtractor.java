@@ -12,7 +12,7 @@ public class HttpHeadersExtractor {
 
     private  static final String HEADERS_SEPARATOR = ",";
 
-    @Value("${request.heades.forward}")
+    @Value("${request.headers.to.forward}")
     private String headerNamesToForward;
 
     private List<String> headersToForward;
